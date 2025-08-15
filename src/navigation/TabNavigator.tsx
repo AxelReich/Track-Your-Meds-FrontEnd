@@ -6,6 +6,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import HomeScreen from '../screens/HomeScreen';
 import ActiveMedsScreen from '../screens/ActiveMedsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 
 const Tab = createBottomTabNavigator();
@@ -46,6 +47,15 @@ export default function TabNavigator() {
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="calendar-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="settings-outline" size={size} color={color} />
             ),
           }}
         />
