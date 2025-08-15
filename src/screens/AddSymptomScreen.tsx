@@ -42,30 +42,35 @@ export default function AddSymptomScreen({ navigation }: AddSymptomScreenProps) 
   const handleSave = async (stages: StageData[]) => {
     setIsLoading(true);
     try {
-      // Convert StageData to PartialStage format
-      const partialStages: PartialStage[] = stages.map(stage => ({
-        name: stage.name,
-        symptomId: 0, // Will be set when symptom is created
-        medication: stage.medications.length > 0 ? stage.medications : null
-      }));
+      // Filter out stages with no medications and format exactly as your API expects
+      const apiStages = stages
+        .filter(stage => stage.medications.length > 0) // Only include stages with medications
+        .map(stage => ({
+          name: stage.name,
+          medication: stage.medications.map(med => ({
+            name: med.name,
+            quantityMg: med.quantityMg || 0,
+            intervalHours: med.intervalHours || 8,
+            totalDays: med.totalDays || 5
+          }))
+        }));
 
-      const symptomData: PartialSymptom = {
+      // Ensure we have at least one stage with medications
+      if (apiStages.length === 0) {
+        Alert.alert('Error', 'Please add at least one medication to any stage');
+        setIsLoading(false);
+        return;
+      }
+
+      const symptomData = {
         name: symptomName.trim(),
         isActive: true,
-        stages: partialStages,
+        stages: apiStages,
       };
 
       console.log('Creating symptom with data:', symptomData);
       
-      // Use the AddSymptomWithMedications method if available, otherwise fall back to createSymptom
-      let newSymptom;
-      try {
-        // Try to use the enhanced method if it exists
-        newSymptom = await apiService.createSymptom(symptomData);
-      } catch (error) {
-        console.log('Enhanced method not available, using basic createSymptom');
-        newSymptom = await apiService.createSymptom(symptomData);
-      }
+      const newSymptom = await apiService.createSymptom(symptomData);
       
       console.log('Symptom created successfully:', newSymptom);
       Alert.alert(

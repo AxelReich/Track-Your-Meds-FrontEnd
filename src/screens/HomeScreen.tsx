@@ -5,6 +5,7 @@ import SymptomCard from '../components/SymptomCard';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../navigation/HomeStackNavigator';
+import { useFocusEffect } from '@react-navigation/native';
 
 type HomeScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'Home'>;
 
@@ -19,9 +20,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchSymptoms();
-  }, []);
+  // Refresh symptoms when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchSymptoms();
+    }, [])
+  );
 
   useEffect(() => {
     filterSymptoms();
@@ -31,8 +35,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching symptoms from API...');
       const symptomsData = await apiService.getSymptoms();
       console.log('Fetched symptoms:', symptomsData);
+      console.log('Number of symptoms:', symptomsData.length);
       setSymptoms(symptomsData);
     } catch (err) {
       console.error('Error fetching symptoms:', err);
@@ -127,8 +133,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Home</Text>
-        <Text style={styles.subtitle}>Manage your symptoms</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>Home</Text>
+          <Text style={styles.subtitle}>Manage your symptoms</Text>
+          <Text style={styles.debugText}>Symptoms: {symptoms.length} | Filtered: {filteredSymptoms.length}</Text>
+        </View>
+        <TouchableOpacity style={styles.refreshButton} onPress={fetchSymptoms}>
+          <Ionicons name="refresh" size={20} color="#007AFF" />
+        </TouchableOpacity>
       </View>
       
       <View style={styles.searchContainer}>
@@ -198,6 +210,12 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
   },
   title: {
     fontSize: 28,
@@ -208,6 +226,15 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#666666',
+    marginBottom: 10,
+  },
+  debugText: {
+    fontSize: 14,
+    color: '#999999',
+    marginTop: 4,
+  },
+  refreshButton: {
+    padding: 8,
   },
   searchContainer: {
     backgroundColor: '#ffffff',

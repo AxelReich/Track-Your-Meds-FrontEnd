@@ -25,11 +25,12 @@ interface SymptomFormProps {
 export default function SymptomForm({ symptomName, onSave, onCancel }: SymptomFormProps) {
   const [stages, setStages] = useState<StageData[]>([
     { name: 'Early', medications: [] },
-    { name: 'Mid', medications: [] },
+    { name: 'Mild', medications: [] },
     { name: 'Severe', medications: [] }
   ]);
 
   const [expandedStage, setExpandedStage] = useState<number | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
 
   const addMedicationToStage = (stageIndex: number) => {
     const newMedication: PartialMedication = {
@@ -43,15 +44,35 @@ export default function SymptomForm({ symptomName, onSave, onCancel }: SymptomFo
     const updatedStages = [...stages];
     updatedStages[stageIndex].medications.push(newMedication);
     setStages(updatedStages);
+    
+    // Clear validation errors when adding new medication
+    setValidationErrors({});
   };
 
   const updateMedication = (stageIndex: number, medIndex: number, field: keyof PartialMedication, value: any) => {
     const updatedStages = [...stages];
+    
+    // Ensure numeric values are positive
+    if (field === 'quantityMg' || field === 'intervalHours' || field === 'totalDays') {
+      const numValue = parseInt(value) || 0;
+      if (numValue < 0) {
+        value = 0; // Prevent negative values
+      }
+    }
+    
     updatedStages[stageIndex].medications[medIndex] = {
       ...updatedStages[stageIndex].medications[medIndex],
       [field]: value
     };
     setStages(updatedStages);
+    
+    // Clear validation error for this field when user types
+    const errorKey = `${stageIndex}-${medIndex}-${field}`;
+    if (validationErrors[errorKey]) {
+      const newErrors = { ...validationErrors };
+      delete newErrors[errorKey];
+      setValidationErrors(newErrors);
+    }
   };
 
   const removeMedication = (stageIndex: number, medIndex: number) => {
@@ -67,6 +88,15 @@ export default function SymptomForm({ symptomName, onSave, onCancel }: SymptomFo
             const updatedStages = [...stages];
             updatedStages[stageIndex].medications.splice(medIndex, 1);
             setStages(updatedStages);
+            
+            // Clear validation errors for removed medication
+            const newErrors = { ...validationErrors };
+            Object.keys(newErrors).forEach(key => {
+              if (key.startsWith(`${stageIndex}-${medIndex}-`)) {
+                delete newErrors[key];
+              }
+            });
+            setValidationErrors(newErrors);
           }
         }
       ]
@@ -77,16 +107,71 @@ export default function SymptomForm({ symptomName, onSave, onCancel }: SymptomFo
     setExpandedStage(expandedStage === stageIndex ? null : stageIndex);
   };
 
+  const getValidationError = (stageIndex: number, medIndex: number, field: string): string => {
+    const errorKey = `${stageIndex}-${medIndex}-${field}`;
+    return validationErrors[errorKey] || '';
+  };
+
+  const validateMedication = (medication: PartialMedication, stageIndex: number, medIndex: number): boolean => {
+    const errors: {[key: string]: string} = {};
+    let isValid = true;
+
+    // Check name
+    if (!medication.name || !medication.name.trim()) {
+      errors[`${stageIndex}-${medIndex}-name`] = 'Must have a name';
+      isValid = false;
+    }
+
+    // Check dosage
+    if (!medication.quantityMg || medication.quantityMg <= 0) {
+      errors[`${stageIndex}-${medIndex}-quantityMg`] = 'Must be greater than 0';
+      isValid = false;
+    }
+
+    // Check interval
+    if (!medication.intervalHours || medication.intervalHours <= 0) {
+      errors[`${stageIndex}-${medIndex}-intervalHours`] = 'Must be greater than 0';
+      isValid = false;
+    }
+
+    // Check duration
+    if (!medication.totalDays || medication.totalDays <= 0) {
+      errors[`${stageIndex}-${medIndex}-totalDays`] = 'Must be greater than 0';
+      isValid = false;
+    }
+
+    // Update validation errors
+    setValidationErrors(prev => ({ ...prev, ...errors }));
+    return isValid;
+  };
+
   const handleSave = () => {
-    // Validate that all medications have required fields
+    // Clear previous validation errors
+    setValidationErrors({});
+    
+    let allValid = true;
+
+    // Validate all medications
     for (const stage of stages) {
-      for (const medication of stage.medications) {
-        if (!medication.name.trim()) {
-          Alert.alert('Error', 'All medications must have a name');
-          return;
+      for (const [medIndex, medication] of stage.medications.entries()) {
+        const stageIndex = stages.indexOf(stage);
+        if (!validateMedication(medication, stageIndex, medIndex)) {
+          allValid = false;
         }
       }
     }
+
+    // Ensure at least one stage has medications
+    const stagesWithMedications = stages.filter(stage => stage.medications.length > 0);
+    if (stagesWithMedications.length === 0) {
+      Alert.alert('Error', 'Please add at least one medication to any stage');
+      return;
+    }
+
+    if (!allValid) {
+      return; // Don't proceed if validation failed
+    }
+
     onSave(stages);
   };
 
@@ -117,7 +202,7 @@ export default function SymptomForm({ symptomName, onSave, onCancel }: SymptomFo
           <View style={styles.infoRow}>
             <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
             <Text style={styles.infoText}>
-              Configure medications for each stage of your symptom
+              Configure medications for Early, Mild, and Severe stages of your symptom
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -176,51 +261,75 @@ export default function SymptomForm({ symptomName, onSave, onCancel }: SymptomFo
                     <View style={styles.inputContainer}>
                       <Text style={styles.label}>Medication Name *</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          getValidationError(stageIndex, medIndex, 'name') && styles.inputError
+                        ]}
                         value={medication.name}
                         onChangeText={(value) => updateMedication(stageIndex, medIndex, 'name', value)}
                         placeholder="e.g., Ibuprofen, Paracetamol"
                         placeholderTextColor="#999"
                       />
+                      {getValidationError(stageIndex, medIndex, 'name') && (
+                        <Text style={styles.errorText}>{getValidationError(stageIndex, medIndex, 'name')}</Text>
+                      )}
                     </View>
 
                     {/* Dosage Fields */}
                     <View style={styles.dosageRow}>
                       <View style={[styles.inputContainer, styles.halfWidth]}>
-                        <Text style={styles.label}>Dosage (mg)</Text>
+                        <Text style={styles.label}>Dosage (mg) *</Text>
                         <TextInput
-                          style={styles.input}
+                          style={[
+                            styles.input,
+                            getValidationError(stageIndex, medIndex, 'quantityMg') && styles.inputError
+                          ]}
                           value={medication.quantityMg?.toString() || ''}
                           onChangeText={(value) => updateMedication(stageIndex, medIndex, 'quantityMg', parseInt(value) || 0)}
                           placeholder="400"
                           placeholderTextColor="#999"
                           keyboardType="numeric"
                         />
+                        {getValidationError(stageIndex, medIndex, 'quantityMg') && (
+                          <Text style={styles.errorText}>{getValidationError(stageIndex, medIndex, 'quantityMg')}</Text>
+                        )}
                       </View>
                       <View style={[styles.inputContainer, styles.halfWidth]}>
-                        <Text style={styles.label}>Interval (hours)</Text>
+                        <Text style={styles.label}>Interval (hours) *</Text>
                         <TextInput
-                          style={styles.input}
+                          style={[
+                            styles.input,
+                            getValidationError(stageIndex, medIndex, 'intervalHours') && styles.inputError
+                          ]}
                           value={medication.intervalHours?.toString() || ''}
                           onChangeText={(value) => updateMedication(stageIndex, medIndex, 'intervalHours', parseInt(value) || 0)}
                           placeholder="8"
                           placeholderTextColor="#999"
                           keyboardType="numeric"
                         />
+                        {getValidationError(stageIndex, medIndex, 'intervalHours') && (
+                          <Text style={styles.errorText}>{getValidationError(stageIndex, medIndex, 'intervalHours')}</Text>
+                        )}
                       </View>
                     </View>
 
                     {/* Duration */}
                     <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Duration (days)</Text>
+                      <Text style={styles.label}>Duration (days) *</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          getValidationError(stageIndex, medIndex, 'totalDays') && styles.inputError
+                        ]}
                         value={medication.totalDays?.toString() || ''}
                         onChangeText={(value) => updateMedication(stageIndex, medIndex, 'totalDays', parseInt(value) || 0)}
                         placeholder="5"
                         placeholderTextColor="#999"
                         keyboardType="numeric"
                       />
+                      {getValidationError(stageIndex, medIndex, 'totalDays') && (
+                        <Text style={styles.errorText}>{getValidationError(stageIndex, medIndex, 'totalDays')}</Text>
+                      )}
                     </View>
                   </View>
                 ))}
@@ -388,8 +497,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333333',
   },
+  inputError: {
+    borderColor: '#ff3b30',
+    borderWidth: 2,
+  },
   dosageRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#ff3b30',
+    marginTop: 4,
   },
 });
