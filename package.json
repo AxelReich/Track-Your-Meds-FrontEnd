@@ -15,6 +15,7 @@
     "@react-native/new-app-screen": "0.80.2",
     "@react-navigation/bottom-tabs": "^7.4.5",
     "@react-navigation/native": "^7.1.17",
+    "@react-navigation/stack": "^7.4.7",
     "add": "^2.0.6",
     "font": "^0.0.4",
     "or": "^0.2.0",

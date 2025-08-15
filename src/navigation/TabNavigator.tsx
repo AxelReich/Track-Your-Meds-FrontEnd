@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import HomeScreen from '../screens/HomeScreen';
+import HomeStackNavigator from './HomeStackNavigator';
 import ActiveMedsScreen from '../screens/ActiveMedsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -24,7 +24,7 @@ export default function TabNavigator() {
       >
         <Tab.Screen
           name="HomeTab"
-          component={HomeScreen}
+          component={HomeStackNavigator}
           options={{
             title: 'Home',
             tabBarIcon: ({ color, size }) => (

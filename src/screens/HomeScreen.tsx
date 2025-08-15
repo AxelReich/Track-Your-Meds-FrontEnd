@@ -3,8 +3,16 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TextInput, 
 import { apiService, type Symptom } from '../services/api';
 import SymptomCard from '../components/SymptomCard';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { HomeStackParamList } from '../navigation/HomeStackNavigator';
 
-export default function HomeScreen() {
+type HomeScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'Home'>;
+
+interface HomeScreenProps {
+  navigation: HomeScreenNavigationProp;
+}
+
+export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [symptoms, setSymptoms] = useState<Symptom[]>([]);
   const [filteredSymptoms, setFilteredSymptoms] = useState<Symptom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,8 +94,7 @@ export default function HomeScreen() {
   };
 
   const handleAddSymptom = () => {
-    // TODO: Navigate to AddSymptomScreen or show add symptom modal
-    Alert.alert('Add Symptom', 'Add symptom functionality coming soon!');
+    navigation.navigate('AddSymptom');
   };
 
   const renderSymptomCard = ({ item }: { item: Symptom }) => (
@@ -175,15 +182,6 @@ export default function HomeScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity style={styles.fab} onPress={handleAddSymptom}>
         <Ionicons name="add" size={28} color="#ffffff" />
-      </TouchableOpacity>
-
-      {/* Debug Button - Remove this later */}
-      <TouchableOpacity style={styles.debugButton} onPress={() => {
-        console.log('Current symptoms state:', symptoms);
-        console.log('Current filtered symptoms:', filteredSymptoms);
-        Alert.alert('Debug Info', `Total symptoms: ${symptoms.length}\nFiltered: ${filteredSymptoms.length}`);
-      }}>
-        <Text style={styles.debugButtonText}>Debug</Text>
       </TouchableOpacity>
     </View>
   );
@@ -306,24 +304,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666666',
     textAlign: 'center',
-  },
-  debugButton: {
-    position: 'absolute',
-    top: 100, // Adjust as needed
-    right: 30,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  debugButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
 });
